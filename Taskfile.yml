@@ -2,10 +2,12 @@ version: '3'
 
 tasks:
   build:
-    desc: Compile the fancontrol binary to _out/fancontrol
+    desc: Compile a static, standalone fancontrol binary to _out/fancontrol
+    env:
+      CGO_ENABLED: '0'
     cmds:
       - mkdir -p _out
-      - go build -o _out/fancontrol .
+      - go build -trimpath -ldflags='-s -w' -o _out/fancontrol .
     sources:
       - '*.go'
       - go.mod
