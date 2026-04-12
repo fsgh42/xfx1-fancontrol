@@ -1,0 +1,21 @@
+[Unit]
+Description=XFX1 GPU fan control
+After=multi-user.target
+ConditionPathExists=/etc/xfx1-fancontrol/fancontrol.conf
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xfx1-fancontrol --config /etc/xfx1-fancontrol/fancontrol.conf
+Restart=on-failure
+RestartSec=5
+
+# Needs to write to /sys/class/hwmon and run nvidia-smi
+User=root
+ProtectSystem=strict
+ReadWritePaths=/sys/class/hwmon
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Compile the fancontrol binary to _out/fancontrol
+    cmds:
+      - mkdir -p _out
+      - go build -o _out/fancontrol .
+    sources:
+      - '*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - _out/fancontrol
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf _out
+
+  run:
+    desc: Build and run in dry-run mode against deploy/fancontrol.conf
+    deps: [build]
+    cmds:
+      - ./_out/fancontrol --config deploy/fancontrol.conf --dry-run
