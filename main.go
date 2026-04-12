@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -64,9 +66,25 @@ func main() {
 		log.Printf("set %s=1 (manual mode)", enablePath)
 	}
 
+	// Shutdown context: cancelled on SIGINT/SIGTERM. The nvidia-smi stream
+	// goroutine (if any) tears down when this is cancelled.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Track background goroutines (e.g. the nvidia-smi streamer) so we can
+	// wait for them to fully tear down before returning.
+	var bgWG sync.WaitGroup
+
 	// Handle signals for clean shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	// Build the temperature reader. For nvidia-smi this spawns a long-lived
+	// `nvidia-smi --loop=N` subprocess and reads lines from its stdout.
+	readTemp, err := newTempReader(ctx, &bgWG, cfg)
+	if err != nil {
+		log.Fatalf("tempsource: %v", err)
+	}
 
 	log.Printf("starting fan control: temp_source=%s fan_pwm=%s interval=%ds dry_run=%v",
 		cfg.TempSource, cfg.FanPWM, cfg.Interval, *dryRun)
@@ -89,7 +107,7 @@ func main() {
 
 	// Run once immediately, then on tick
 	run := func() {
-		temp, err := readTemp(cfg.TempSource, cfg.GPUIndex)
+		temp, err := readTemp()
 		if err != nil {
 			log.Printf("ERROR reading temp: %v", err)
 			return
@@ -160,11 +178,14 @@ func main() {
 		case sig := <-sigCh:
 			log.Printf("received %v, shutting down", sig)
 
+			cancel()    // signal the nvidia-smi streamer to exit
+			bgWG.Wait() // wait for the child process to be reaped
+
 			if !*dryRun {
 				restore()
 			}
 
-			os.Exit(0)
+			return
 		}
 	}
 }
