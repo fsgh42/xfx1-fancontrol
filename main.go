@@ -95,9 +95,9 @@ func main() {
 
 	var (
 		// Previous-tick state, used to decide "tickChanged" in the hot regime.
-		haveLastTick                      bool
+		haveLastTick                           bool
 		lastTickTemp, lastTickPWM, lastTickRPM int
-		lastTickHadRPM                    bool
+		lastTickHadRPM                         bool
 
 		// Previous-*log* state, used for the cold-regime delta + heartbeat.
 		haveLastLogged bool
@@ -128,8 +128,7 @@ func main() {
 
 		if !*dryRun {
 			if err := writeSysfs(cfg.FanPWM, targetPWM); err != nil {
-				log.Printf("ERROR writing pwm: %v", err)
-				return
+				log.Fatalf("ERROR writing pwm: %v", err)
 			}
 		}
 
